@@ -3,11 +3,15 @@ package top.winp.ocr.baiduocrdemo;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.baidu.ocr.sdk.OCR;
@@ -40,6 +44,22 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_GENERAL = 100;
     private Context mContext = MainActivity.this;
+    private String mToken;
+    private TextView mTv_result;
+
+
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+
+            switch (msg.what) {
+                case 100:
+                    mTv_result.setText(String.valueOf(msg.obj));
+                    break;
+            }
+        }
+    };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +71,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initView() {
+
+        mTv_result = findViewById(R.id.tv_result);
+
         Button btn_init = findViewById(R.id.btn_init);
         Button btn_select = findViewById(R.id.btn_select);
 
@@ -66,37 +89,44 @@ public class MainActivity extends AppCompatActivity {
         btn_init.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                OCR.getInstance(mContext).initAccessToken(new OnResultListener<AccessToken>() {
-                    @Override
-                    public void onResult(AccessToken result) {
-                        // 调用成功，返回AccessToken对象
-                        final String token = result.getAccessToken();
-
-                        Log.e("MainActivity", "MainActivity onResult()" + token);
-
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(mContext, token, Toast.LENGTH_SHORT).show();
-
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onError(OCRError error) {
-                        // 调用失败，返回OCRError子类SDKError对象
-                        error.printStackTrace();
-                    }
-                }, getApplicationContext());
+                getToken();
             }
         });
     }
+
+    private void getToken() {
+
+        OCR.getInstance(mContext).initAccessToken(new OnResultListener<AccessToken>() {
+            @Override
+            public void onResult(AccessToken result) {
+                // 调用成功，返回AccessToken对象
+                final String token = result.getAccessToken();
+
+                Log.e("MainActivity", "MainActivity onResult()" + token);
+
+                mToken = token;
+            }
+
+            @Override
+            public void onError(OCRError error) {
+                // 调用失败，返回OCRError子类SDKError对象
+                error.printStackTrace();
+            }
+        }, getApplicationContext());
+
+    }
+
 
     /**
      * 打开百度提供的UI选择图片
      */
     private void openImageUI() {
+
+        if (TextUtils.isEmpty(this.mToken)) {
+            getToken();
+        }
+
+
         // 生成intent对象
         Intent intent = new Intent(MainActivity.this, CameraActivity.class);
 
@@ -119,11 +149,14 @@ public class MainActivity extends AppCompatActivity {
             if (CameraActivity.CONTENT_TYPE_ID_CARD_FRONT.equals(contentType)) {
                 // 获取图片文件调用sdk数据接口，见数据接口说明
             }
+
+            getData(filePath);
         }
     }
 
 
     public void getData(String filePath) {
+
 
         // 通用文字识别参数设置
         GeneralBasicParams param = new GeneralBasicParams();
@@ -145,11 +178,25 @@ public class MainActivity extends AppCompatActivity {
                 }
                 // json格式返回字符串
                 //listener.onResult(result.getJsonRes());
+
+                Log.e("MainActivity", "MainActivity onResult()    ::" + sb.toString());
+
+
+                Message msg = Message.obtain();
+                msg.what = 100;
+                msg.obj = sb.toString();
+                mHandler.sendMessage(msg);
+
+
             }
 
             @Override
             public void onError(OCRError error) {
                 // 调用失败，返回OCRError对象
+                int errorCode = error.getErrorCode();
+                Log.e("MainActivity", "MainActivity onError()    ::" + errorCode);
+
+                error.printStackTrace();
             }
         });
 
