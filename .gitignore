@@ -1,3 +1,9 @@
 *.class
 .idea
 app/app.iml
+ocr_ui/build/*
+app/build
+.gradle
+local.properties
+
+
