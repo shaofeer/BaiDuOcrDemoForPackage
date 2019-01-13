@@ -7,3 +7,5 @@ app/build
 local.properties
 
 
+/ocr_ui/build/
+/app/build/
